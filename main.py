@@ -1,4 +1,4 @@
-from hosuekeeping import checkactivation
+from housekeeping import checkactivation
 from activate import *
 
 
