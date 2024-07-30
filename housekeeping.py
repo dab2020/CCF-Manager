@@ -4,6 +4,26 @@ from database import initialize_database
 import sys
 
 
+def incvalue(filename='crmpwd.txt'):
+    try:
+        # Try to open the file in read mode
+        with open(filename, 'r') as file:
+            value = int(file.read().strip())
+    except FileNotFoundError:
+        # If the file does not exist, start with the value 1
+        value = 0
+
+    # Increment the value by 1
+    value += 1
+
+    # Write the updated value back to the file
+    with open(filename, 'w') as file:
+        file.write(str(value))
+
+    # Return the updated value
+    return value
+
+
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:

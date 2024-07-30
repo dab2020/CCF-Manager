@@ -2,6 +2,7 @@ import sqlite3
 import sys
 import os
 
+
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
@@ -10,6 +11,14 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+def get_sale_by_id(sale_id):
+    db_path = resource_path('sales.db')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM sales WHERE id = ?', (sale_id,))
+    sale = cursor.fetchone()
+    conn.close()
+    return sale
 def initialize_database():
     db_path = resource_path('sales.db')
     conn = sqlite3.connect(db_path)
@@ -21,17 +30,8 @@ def initialize_database():
         phone TEXT,
         date TEXT,
         address TEXT,
+        zipcd TEXT,
         parking TEXT,
-        service TEXT,
-        room TEXT,
-        size TEXT,
-        roomno TEXT,
-        otherinfo TEXT,
-        carpetname TEXT,
-        underlay TEXT,
-        gripers TEXT,
-        doorbars TEXT,
-        doorbartype TEXT,
         total REAL
     )
     ''')
@@ -39,8 +39,9 @@ def initialize_database():
     CREATE TABLE IF NOT EXISTS invoice_items (
         id INTEGER PRIMARY KEY,
         sale_id INTEGER,
-        qty INTEGER,
+        type TEXT,
         desc TEXT,
+        qty INTEGER,
         price REAL,
         total REAL,
         FOREIGN KEY(sale_id) REFERENCES sales(id)
@@ -49,22 +50,22 @@ def initialize_database():
     conn.commit()
     conn.close()
 
-def save_sale(name, phone, date, address, parking, service, room, size, roomno, otherinfo, carpetname, underlay,
-              gripers, doorbars, doorbartype, total, items):
+
+def save_sale(id, name, phone, date, address, parking, total, items, zipcd):
     db_path = resource_path('sales.db')
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO sales (name, phone, date, address, parking, service, room, size, roomno, otherinfo, carpetname, underlay, gripers, doorbars, doorbartype, total) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (name, phone, date, address, parking, service, room, size, roomno, otherinfo, carpetname, underlay, gripers,
-          doorbars, doorbartype, total))
+        INSERT INTO sales (id, name, phone, date, address, zipcd, parking, total) 
+        VALUES (?,?, ?, ?, ?, ?, ?,?)
+    ''', (id, name, phone, date, address, zipcd, parking, total))
     sale_id = cursor.lastrowid
     for item in items:
-        cursor.execute('INSERT INTO invoice_items (sale_id, qty, desc, price, total) VALUES (?, ?, ?, ?, ?)',
-                       (sale_id, item[0], item[1], item[2], item[3]))
+        cursor.execute('INSERT INTO invoice_items (sale_id, type,desc, qty, price, total) VALUES (?, ?, ?, ?, ?,?)',
+                       (sale_id, item[0], item[1], item[2], item[3], item[4]))
     conn.commit()
     conn.close()
+
 
 def get_sales():
     db_path = resource_path('sales.db')
@@ -75,11 +76,34 @@ def get_sales():
     conn.close()
     return sales
 
+
 def get_invoice_items(sale_id):
     db_path = resource_path('sales.db')
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM invoice_items WHERE sale_id = ?', (sale_id,))
+    cursor.execute('SELECT type, desc, qty, price, total FROM invoice_items WHERE sale_id = ? ORDER BY id', (sale_id,))
     items = cursor.fetchall()
     conn.close()
     return items
+
+
+def update_sale(sale_id, name, phone, date, address, parking, total, items, zipcd):
+    db_path = resource_path('sales.db')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE sales
+        SET name = ?, phone = ?, date = ?, address = ?, parking = ?, total = ?, zipcd = ?
+        WHERE id = ?
+    ''', (name, phone, date, address, parking, total, zipcd, sale_id))
+
+    # Delete existing items
+    cursor.execute('DELETE FROM invoice_items WHERE sale_id = ?', (sale_id,))
+
+    # Insert new/updated items
+    for item in items:
+        cursor.execute('INSERT INTO invoice_items (sale_id, type, desc, qty, price, total) VALUES (?, ?, ?, ?, ?, ?)',
+                       (sale_id, item[0], item[1], item[2], item[3], item[4]))
+
+    conn.commit()
+    conn.close()

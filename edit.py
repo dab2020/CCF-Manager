@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from tkinter import ttk
 from customerdocgen import generatecustomerinvoice, generateinstall
-from database import save_sale
+from database import save_sale, get_invoice_items, update_sale
 from datetime import date
 from housekeeping import incvalue
 import sys
@@ -9,7 +9,8 @@ import os
 from tkcalendar import DateEntry
 
 
-def importdata():
+def editdata(sale_data):
+
     def makepdfcustomerinvoice():
         name = first_name_entry.get() + " " + last_name_entry.get()
         phone = phone_entry.get()
@@ -18,22 +19,27 @@ def importdata():
         zipcode = zip_entry.get()
         otherinfo = other_info_textbox.get("1.0", "end-1c")
         rminfos = roominfo
-        product = invoice_list
+        current_items = []
+        for item in tree.get_children():
+            values = tree.item(item)['values']
+            current_items.append(values)
+
+        invoice_list = current_items
         installernm = inst_entry.get()
         deldate1 = deldate_entry.get()
         fitdate1 = fitdate_entry.get()
         paymeth = meth_type_combobox.get()
-        uniqueid = incvalue()
         vetflag = vetcheckbutton.get()
         depflag = depcheckbutton.get()
-        total = 0
-        for row in product:
-            total += row[4]
+        uniqueid = sale_data[0]
+        total = 0.9
+        for row in invoice_list:
+            total += float(row[4])
 
         today = date.today().strftime('%B %d, %Y')
-        save_sale(uniqueid,name, phone, today, address, parking, total, product, zipcode)
+        update_sale(uniqueid,name, phone, today, address, parking, total, invoice_list, zipcode)
         print("Bout to print")
-        generatecustomerinvoice(name, phone, product, total, paymeth, vetflag, depflag, uniqueid, zipcode, address, otherinfo)
+        generatecustomerinvoice(name, phone, invoice_list, total, paymeth, vetflag, depflag, uniqueid, zipcode, address, otherinfo)
 
     def makepdfinstaller():
         name = first_name_entry.get() + " " + last_name_entry.get()
@@ -156,7 +162,7 @@ def importdata():
     space_type_combobox = ctk.CTkComboBox(room_info_frame, values=["Room", "Living Room", "Hallway", "Stairs", "Commercial Flooring"])
     space_type_combobox.grid(row=1, column=1, padx=10, pady=5)
 
-    room_width_label = ctk.CTkLabel(room_info_frame, text="Width (m)")
+    room_width_label = ctk.CTkLabel(room_info_frame, text="Width (,)")
     room_width_label.grid(row=0, column=2, padx=10, pady=5, sticky="w")
     room_width_entry = ctk.CTkEntry(room_info_frame, validate="key",
                                     validatecommand=(window.register(validate_unit), '%P'))
@@ -182,7 +188,7 @@ def importdata():
     tree_rooms.heading('space_type', text='Type of Space')
     tree_rooms.heading('room_width', text='Width (m)')
     tree_rooms.heading('room_length', text='Length (m)')
-    tree_rooms.heading('area', text='Area (sqm)')
+    tree_rooms.heading('area', text='Area (sqft)')
 
     tree_rooms.column('service_type', width=100)
     tree_rooms.column('space_type', width=100)
@@ -276,22 +282,31 @@ def importdata():
 
     columns = ('service', 'desc', 'qty', 'price', 'total')
     tree = ttk.Treeview(frame_right, columns=columns, show="headings", style="Treeview")
-    tree.heading('qty', text='Qty')
+    tree.heading('service', text='Type of Service')
     tree.heading('desc', text='Name of Product')
+    tree.heading('qty', text='Qty')
     tree.heading('price', text='Unit Price')
     tree.heading('total', text='Total')
-    tree.heading('service', text='Type of Service')
 
     tree.column('qty', width=100, anchor='center')
     tree.column('desc', width=200, anchor='center')
     tree.column('price', width=100, anchor='center')
     tree.column('total', width=100, anchor='center')
     tree.column('service', width=100, anchor='center')
+    invoice_list = get_invoice_items(sale_data[0])
+    #for item in invoice_list:
+    #     tree.insert('', 'end', values=item[2:])
+
 
     tree.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
 
-    invoice_list = []
 
+    first_name_entry.insert(0, sale_data[1].split()[0])
+    last_name_entry.insert(0, sale_data[1].split()[1])
+    phone_entry.insert(0, sale_data[2])
+    address_entry.insert(0, sale_data[4])
+    zip_entry.insert(0, sale_data[5])
+    parking_combobox.set(sale_data[6])
     def clear_item():
         qty_spinbox.delete(0, ctk.END)
         qty_spinbox.insert(0, "1")
@@ -306,16 +321,14 @@ def importdata():
         room_length_entry.delete(0, ctk.END)
 
     def add_item(tree, serv_type_combobox, qty_spinbox, desc_entry, price_spinbox):
-        qty = int(qty_spinbox.get())
+        ser = serv_type_combobox.get()
         desc = desc_entry.get()
+        qty = int(qty_spinbox.get())
         price = float(price_spinbox.get())
         line_total = qty * price
-        ser = serv_type_combobox.get()
         invoice_item = [ser, desc, qty, price, line_total]
-        tree.insert('', 0, values=invoice_item)
+        tree.insert('', 'end', values=invoice_item)
         clear_item()
-        invoice_list.append(invoice_item)
-        print(invoice_item)
 
     def add_room(tree_rooms, service_type_combobox, space_type_combobox, room_width_entry, room_length_entry):
         service_type = service_type_combobox.get()

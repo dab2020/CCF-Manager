@@ -1,6 +1,0 @@
-customtkinter~=5.2.2
-pillow~=10.3.0
-CTkMessagebox~=2.5
-docx2pdf~=0.1.8
-docxtpl~=0.17.0
-tkcalendar>=1.6.1
