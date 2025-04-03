@@ -19,52 +19,76 @@ def get_sale_by_id(sale_id):
     sale = cursor.fetchone()
     conn.close()
     return sale
+
+
 def initialize_database():
     db_path = resource_path('sales.db')
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS sales (
-        id INTEGER PRIMARY KEY,
-        name TEXT,
-        phone TEXT,
-        date TEXT,
-        address TEXT,
-        zipcd TEXT,
-        parking TEXT,
-        total REAL
-    )
+        CREATE TABLE IF NOT EXISTS sales (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            phone TEXT,
+            date TEXT,
+            address TEXT,
+            zipcd TEXT,
+            parking TEXT,
+            total REAL
+        )
     ''')
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS invoice_items (
-        id INTEGER PRIMARY KEY,
-        sale_id INTEGER,
-        type TEXT,
-        desc TEXT,
-        qty INTEGER,
-        price REAL,
-        total REAL,
-        FOREIGN KEY(sale_id) REFERENCES sales(id)
-    )
+        CREATE TABLE IF NOT EXISTS invoice_items (
+            id INTEGER PRIMARY KEY,
+            sale_id INTEGER,
+            type TEXT,
+            desc TEXT,
+            qty INTEGER,
+            price REAL,
+            total REAL,
+            FOREIGN KEY(sale_id) REFERENCES sales(id)
+        )
+    ''')
+    # New table for room data:
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS rooms (
+            id INTEGER PRIMARY KEY,
+            sale_id INTEGER,
+            service_type TEXT,
+            space_type TEXT,
+            room_width REAL,
+            room_length REAL,
+            room_area REAL,
+            FOREIGN KEY(sale_id) REFERENCES sales(id)
+        )
     ''')
     conn.commit()
     conn.close()
 
 
-def save_sale(id, name, phone, date, address, parking, total, items, zipcd):
+def save_sale(id, name, phone, date, address, parking, total, items, zipcd, rooms):
     db_path = resource_path('sales.db')
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO sales (id, name, phone, date, address, zipcd, parking, total) 
-        VALUES (?,?, ?, ?, ?, ?, ?,?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ''', (id, name, phone, date, address, zipcd, parking, total))
     sale_id = cursor.lastrowid
     for item in items:
-        cursor.execute('INSERT INTO invoice_items (sale_id, type,desc, qty, price, total) VALUES (?, ?, ?, ?, ?,?)',
-                       (sale_id, item[0], item[1], item[2], item[3], item[4]))
+        cursor.execute('''
+            INSERT INTO invoice_items (sale_id, type, desc, qty, price, total)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (sale_id, item[0], item[1], item[2], item[3], item[4]))
+    # Save each room data entry:
+    for room in rooms:
+        cursor.execute('''
+            INSERT INTO rooms (sale_id, service_type, space_type, room_width, room_length, room_area)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (sale_id, room[0], room[1], room[2], room[3], room[4]))
     conn.commit()
     conn.close()
+
 
 
 def get_sales():
@@ -107,3 +131,15 @@ def update_sale(sale_id, name, phone, date, address, parking, total, items, zipc
 
     conn.commit()
     conn.close()
+
+def get_rooms(sale_id):
+    db_path = resource_path('sales.db')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT service_type, space_type, room_width, room_length, room_area 
+        FROM rooms WHERE sale_id = ?
+    ''', (sale_id,))
+    rooms = cursor.fetchall()
+    conn.close()
+    return rooms
