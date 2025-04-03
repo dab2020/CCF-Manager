@@ -47,44 +47,24 @@ def initialize_database():
         FOREIGN KEY(sale_id) REFERENCES sales(id)
     )
     ''')
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS room_info (
-        id INTEGER PRIMARY KEY,
-        sale_id INTEGER,
-        service_type TEXT,
-        space_type TEXT,
-        room_width REAL,
-        room_length REAL,
-        room_area REAL,
-        FOREIGN KEY(sale_id) REFERENCES sales(id)
-    )
-    ''')
     conn.commit()
     conn.close()
 
 
-
-def save_sale(id, name, phone, date, address, parking, total, items, zipcd, rooms):
+def save_sale(id, name, phone, date, address, parking, total, items, zipcd):
     db_path = resource_path('sales.db')
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO sales (id, name, phone, date, address, zipcd, parking, total) 
-        VALUES (?,?,?,?,?,?,?,?)
+        VALUES (?,?, ?, ?, ?, ?, ?,?)
     ''', (id, name, phone, date, address, zipcd, parking, total))
     sale_id = cursor.lastrowid
     for item in items:
-        cursor.execute('INSERT INTO invoice_items (sale_id, type, desc, qty, price, total) VALUES (?, ?, ?, ?, ?, ?)',
+        cursor.execute('INSERT INTO invoice_items (sale_id, type,desc, qty, price, total) VALUES (?, ?, ?, ?, ?,?)',
                        (sale_id, item[0], item[1], item[2], item[3], item[4]))
-    # Save each room entry
-    for room in rooms:
-        cursor.execute('''
-            INSERT INTO room_info (sale_id, service_type, space_type, room_width, room_length, room_area)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (sale_id, room[0], room[1], room[2], room[3], room[4]))
     conn.commit()
     conn.close()
-
 
 
 def get_sales():

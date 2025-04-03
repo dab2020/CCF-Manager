@@ -36,7 +36,7 @@ def importdata():
         print("Dayyan is " + str(dayyan))
 
         today = date.today().strftime('%B %d, %Y')
-        save_sale(uniqueid, name, phone, today, address, parking, total, invoice_list, zipcode, roominfo)
+        save_sale(uniqueid, name, phone, today, address, parking, total, invoice_list, zipcode)
         print("Bout to print customer invoice...")
         generatecustomerinvoice(name, phone, invoice_list, total, paymeth, vetflag, depflag, uniqueid, zipcode, address, dayyan)
 
