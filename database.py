@@ -85,6 +85,18 @@ def save_sale(id, name, phone, date, address, parking, total, items, zipcd, room
     conn.commit()
     conn.close()
 
+def get_room_info(sale_id):
+    db_path = resource_path('sales.db')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT service_type, space_type, room_width, room_length, room_area 
+        FROM room_info 
+        WHERE sale_id = ?
+    ''', (sale_id,))
+    rooms = cursor.fetchall()
+    conn.close()
+    return rooms
 
 
 def get_sales():
