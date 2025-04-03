@@ -4,12 +4,13 @@ from tkinter import ttk
 from PIL import Image
 from enter import importdata
 from edit import editdata
-from database import get_sales, get_invoice_items, get_sale_by_id, get_room_info
+from database import get_sales, get_invoice_items, get_sale_by_id
 import os
 import subprocess
 import sys
 
 
+# home.py
 def view_old_sales():
     def edit_sale():
         selected_item = tree.selection()[0]
@@ -18,21 +19,13 @@ def view_old_sales():
         print(sale_data)
         editdata(sale_data)  # Open edit sale screen with data
 
-    def show_details(event):
+    def show_invoice_items(event):
         selected_item = tree.selection()[0]
         sale_id = tree.item(selected_item, 'values')[0]
-        
-        # Update Invoice Items Tree
         items = get_invoice_items(sale_id)
         item_tree.delete(*item_tree.get_children())  # Clear existing items
         for item in items:
-            item_tree.insert('', 'end', values=item)
-        
-        # Update Room Data Tree
-        rooms = get_room_info(sale_id)
-        room_tree.delete(*room_tree.get_children())  # Clear existing room entries
-        for room in rooms:
-            room_tree.insert('', 'end', values=room)
+            item_tree.insert('', 'end', values=item[0:])
 
     def open_invoice_folder():
         folder_path = os.path.join(os.getcwd(), "invoice")
@@ -45,9 +38,9 @@ def view_old_sales():
         search_term = search_entry.get()
         matching_sales = []
         for sale in get_sales():
-            if (search_term.lower() in sale[1].lower()) or (search_term.lower() in sale[5].lower()):
+            if (search_term.lower() in sale[1].lower()) or (
+                    search_term.lower() in sale[5].lower()):  # Assuming name is at index 1
                 matching_sales.append(sale)
-        update_sales_tree(matching_sales)
 
     def update_sales_tree(sales):
         tree.delete(*tree.get_children())  # Clear existing items
@@ -56,14 +49,13 @@ def view_old_sales():
 
     root = ctk.CTk()
     root.title("Old Sales")
-    root.geometry("1000x600")
+    root.geometry("800x600")
 
-    main_frame = ctk.CTkFrame(root)
-    main_frame.pack(expand=True, fill="both", padx=10, pady=10)
+    frame = ctk.CTkFrame(root)
+    frame.pack(expand=True, fill="both")
 
-    # --- Search Bar ---
     search_frame = ctk.CTkFrame(root)
-    search_frame.pack(side='top', fill='x', padx=10, pady=5)
+    search_frame.pack(side='top', fill='x')
 
     search_label = ctk.CTkLabel(search_frame, text="Search:")
     search_label.pack(side='left', padx=10)
@@ -74,55 +66,52 @@ def view_old_sales():
     search_button = ctk.CTkButton(search_frame, text="Search", command=search_sales)
     search_button.pack(side='left', padx=10)
 
-    # --- Sales Treeview ---
-    sales_columns = ('id', 'name', 'phone', 'date', 'addr', 'zip')
-    tree = ttk.Treeview(main_frame, columns=sales_columns, show='headings', height=10)
-    for col in sales_columns:
-        tree.heading(col, text=col.upper())
-        tree.column(col, width=80)
+    columns = ('id', 'name', 'phone', 'date', 'addr', 'zip')
+    tree = ttk.Treeview(frame, columns=columns, show='headings')
+    tree.heading('id', text='ID')
+    tree.heading('name', text='Name')
+    tree.heading('phone', text='Phone')
+    tree.heading('date', text='Date')
+    tree.heading('addr', text='Address')
+    tree.heading('zip', text='Postal Code')
+
+    # Set column widths
+    for col in columns:
+        tree.column(col, width=50)
+
     update_sales_tree(get_sales())
-    tree.pack(side='left', fill='both', expand=True, padx=(0,10))
-    tree.bind('<<TreeviewSelect>>', show_details)
 
-    # --- Right-Side Frame for Invoice & Room Data ---
-    right_frame = ctk.CTkFrame(main_frame)
-    right_frame.pack(side='right', fill='both', expand=True)
+    tree.pack(side='left', fill='both', expand=True)
 
-    # Invoice Items Treeview
-    item_frame = ctk.CTkFrame(right_frame)
-    item_frame.pack(side='top', fill='both', expand=True, padx=5, pady=5)
     item_columns = ('type', 'desc', 'qty', 'price', 'total')
-    item_tree = ttk.Treeview(item_frame, columns=item_columns, show='headings', height=7)
+    item_tree = ttk.Treeview(frame, columns=item_columns, show='headings')
+    item_tree.heading('type', text='Type')
+    item_tree.heading('desc', text='Description')
+    item_tree.heading('qty', text='Qty')
+    item_tree.heading('price', text='Price')
+    item_tree.heading('total', text='Total')
+
+    # Set column widths for item tree
     for col in item_columns:
-        item_tree.heading(col, text=col.upper())
-        item_tree.column(col, width=80)
-    item_tree.pack(fill='both', expand=True)
+        item_tree.column(col, width=50)
 
-    # Room Data Treeview
-    room_frame = ctk.CTkFrame(right_frame)
-    room_frame.pack(side='bottom', fill='both', expand=True, padx=5, pady=5)
-    room_columns = ('service_type', 'space_type', 'room_width', 'room_length', 'room_area')
-    room_tree = ttk.Treeview(room_frame, columns=room_columns, show='headings', height=7)
-    room_tree.heading('service_type', text='Service Type')
-    room_tree.heading('space_type', text='Space Type')
-    room_tree.heading('room_width', text='Width')
-    room_tree.heading('room_length', text='Length')
-    room_tree.heading('room_area', text='Area')
-    for col in room_columns:
-        room_tree.column(col, width=80)
-    room_tree.pack(fill='both', expand=True)
+    item_tree.pack(side='right', fill='both', expand=True)
 
-    # --- Bottom Button Frame ---
+    tree.bind('<<TreeviewSelect>>', show_invoice_items)
+
+    # Add button to open invoice folder
     button_frame = ctk.CTkFrame(root)
-    button_frame.pack(side='bottom', fill='x', pady=10, padx=10)
+    button_frame.pack(side='bottom', fill='x', pady=10)
 
     show_invoices_button = ctk.CTkButton(button_frame, text="Show Invoices", command=open_invoice_folder)
     show_invoices_button.pack(side='left')
 
+    # Add Edit Sale button
     edit_sale_button = ctk.CTkButton(button_frame, text="Edit Sale", command=edit_sale)
     edit_sale_button.pack(side='right')
-
     root.mainloop()
+
+
 def home():
     def gotodataentryscreen():
         importdata()
